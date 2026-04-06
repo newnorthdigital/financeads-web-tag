@@ -104,7 +104,7 @@ if (data.subId) {
   pixelUrl = pixelUrl + '&s_id=' + encodeUriComponent(makeString(data.subId));
 }
 
-debugLog('Pixel URL: ' + pixelUrl);
+debugLog('Firing pixel for order: ' + makeString(data.orderId) + ', category: ' + makeString(data.orderCategory));
 
 sendPixel(pixelUrl, function() {
   debugLog('Pixel sent successfully');
