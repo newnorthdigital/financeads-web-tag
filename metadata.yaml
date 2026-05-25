@@ -1,5 +1,7 @@
 homepage: "https://financeads.net"
 documentation: "https://github.com/newnorthdigital/financeads-web-tag/blob/main/README.md"
 versions:
-  - sha: f2bad99a6959fad9e76fb491ef805e0dec01e58f
-    changeNotes: "Initial release."
+  - sha: ca3ee02c2a49a0b3eb8629a6af20f5c92381f8d6
+    changeNotes: "Add UTF-8 BOM to template.tpl + correct metadata SHA."
+  - sha: b3d7bb2042506e0fa75fcbf5c4e7ecd98b42ed18
+    changeNotes: "Initial release - FinanceAds finance affiliate conversion tracking."
