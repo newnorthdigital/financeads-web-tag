@@ -1,6 +1,8 @@
 homepage: "https://financeads.net"
 documentation: "https://github.com/newnorthdigital/financeads-web-tag/blob/main/README.md"
 versions:
+  - sha: beca811bb3d094170c86ae8b63c494ec15b0c243
+    changeNotes: "Rename displayName to 'FinanceAds Tracking by New North Digital' per Gallery third-party naming rule (tag name by company)."
   - sha: 01da2c966236d378ed03c8d017fde1dd0c2bd455
     changeNotes: "Rename displayName to 'FinanceAds Conversion Tracking by New North Digital' per Gallery third-party naming rule (tag name by company)."
   - sha: ca3ee02c2a49a0b3eb8629a6af20f5c92381f8d6
