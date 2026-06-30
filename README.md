@@ -63,7 +63,7 @@ https://www.financeads.net/tl.php?p={programId}&oid={orderId}&ocategory={orderCa
 
 ## Author
 
-Built by [New North Digital](https://newnorth.digital?utm_source=github&utm_medium=referral&utm_campaign=gtm-templates).
+Created and maintained by [Freek Kampen](https://freekkampen.com) at [New North Digital](https://newnorth.digital?utm_source=github&utm_medium=referral&utm_campaign=gtm-templates).
 
 ## License
 
