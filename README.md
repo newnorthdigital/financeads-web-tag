@@ -9,6 +9,7 @@ Fires a tracking pixel to `financeads.net/tl.php` on your conversion page to rep
 - Sale, lead, newsletter signup, and onboarding start conversion tracking
 - Simple image pixel (no external JavaScript required)
 - Optional sub ID for tracking segmentation
+- Built-in Consent Mode gate: follows GTM Consent Mode by default, firing only once `ad_storage` is granted and waiting for consent otherwise.
 - Debug logging in GTM Preview mode
 
 ## Installation
@@ -37,9 +38,17 @@ Fires a tracking pixel to `financeads.net/tl.php` on your conversion page to rep
 | Order ID | Yes | Unique order or transaction ID (`oid` parameter) |
 | Order Category | Yes | Type of conversion: Sale, Lead, Newsletter signup, or Onboarding start (`ocategory` parameter) |
 | Sub ID | No | Optional sub ID for segmentation (`s_id` parameter) |
+| Consent handling | No | How the tag reacts to GTM Consent Mode. Defaults to "Follow GTM Consent Mode (ad_storage)" |
 
 3. Set the trigger to fire on your conversion/thank-you page
 4. Enable **Debug logging** during testing (under the Debugging section)
+
+## Consent
+
+The tag has a built-in Consent Mode gate under the **Consent** section, with a **Consent handling** field:
+
+- **Follow GTM Consent Mode (ad_storage)** (default, recommended) fires the pixel only once `ad_storage` is granted, and waits for consent via a consent listener if it is not yet given. Consent that is never configured counts as granted, so sites without Consent Mode are unaffected.
+- **Fire immediately (I gate consent elsewhere)** runs the pixel right away, for when you gate consent with GTM's tag-level consent settings or a consent trigger.
 
 ## Pixel format
 

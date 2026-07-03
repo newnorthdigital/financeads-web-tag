@@ -69,6 +69,33 @@ ___TEMPLATE_PARAMETERS___
   },
   {
     "type": "GROUP",
+    "name": "consentGroup",
+    "displayName": "Consent",
+    "groupStyle": "ZIPPY_OPEN",
+    "subParams": [
+      {
+        "type": "SELECT",
+        "name": "consentMode",
+        "displayName": "Consent handling",
+        "macrosInSelect": false,
+        "selectItems": [
+          {
+            "value": "auto",
+            "displayValue": "Follow GTM Consent Mode (ad_storage)"
+          },
+          {
+            "value": "off",
+            "displayValue": "Fire immediately (I gate consent elsewhere)"
+          }
+        ],
+        "simpleValueType": true,
+        "defaultValue": "auto",
+        "help": "\"Follow GTM Consent Mode\" (recommended) fires only once ad_storage is granted, and waits for consent if it is not yet given. \"Fire immediately\" runs right away, for when you gate consent with GTM's tag-level consent settings or a consent trigger. Consent that is never configured counts as granted, so sites without Consent Mode are unaffected."
+      }
+    ]
+  },
+  {
+    "type": "GROUP",
     "name": "debugging",
     "displayName": "Debugging",
     "groupStyle": "ZIPPY_CLOSED",
@@ -85,6 +112,8 @@ var log = require('logToConsole');
 var sendPixel = require('sendPixel');
 var encodeUriComponent = require('encodeUriComponent');
 var makeString = require('makeString');
+var isConsentGranted = require('isConsentGranted');
+var addConsentListener = require('addConsentListener');
 
 var enableDebug = data.debug;
 var debugLog = function(msg) {
@@ -104,15 +133,42 @@ if (data.subId) {
   pixelUrl = pixelUrl + '&s_id=' + encodeUriComponent(makeString(data.subId));
 }
 
-debugLog('Firing pixel for order: ' + makeString(data.orderId) + ', category: ' + makeString(data.orderCategory));
+// Fire the conversion pixel. Guarded so it runs at most once, even if the
+// consent listener fires more than once.
+var hasFired = false;
+var fire = function() {
+  if (hasFired) return;
+  hasFired = true;
 
-sendPixel(pixelUrl, function() {
-  debugLog('Pixel sent successfully');
-  data.gtmOnSuccess();
-}, function() {
-  debugLog('Pixel failed to send');
-  data.gtmOnFailure();
-});
+  debugLog('Firing pixel for order: ' + orderId + ', category: ' + orderCategory);
+
+  sendPixel(pixelUrl, function() {
+    debugLog('Pixel sent successfully');
+    data.gtmOnSuccess();
+  }, function() {
+    debugLog('Pixel failed to send');
+    data.gtmOnFailure();
+  });
+};
+
+// Consent gate. The FinanceAds pixel is an advertising/affiliate beacon, which
+// requires ad_storage. In the default "auto" mode the tag follows GTM Consent
+// Mode: it fires once ad_storage is granted and waits (via a consent listener)
+// if it is not yet. Choose "Fire immediately" to gate consent at the container
+// level instead. Note: isConsentGranted returns true when consent is not
+// configured, so sites without Consent Mode keep firing.
+var consentMode = data.consentMode || 'auto';
+
+if (consentMode === 'off' || isConsentGranted('ad_storage')) {
+  fire();
+} else {
+  debugLog('Waiting for ad_storage consent');
+  addConsentListener('ad_storage', function(consentType, granted) {
+    if (granted) {
+      fire();
+    }
+  });
+}
 
 
 ___WEB_PERMISSIONS___
@@ -171,6 +227,58 @@ ___WEB_PERMISSIONS___
       "isEditedByUser": true
     },
     "isRequired": true
+  },
+  {
+    "instance": {
+      "key": {
+        "publicId": "access_consent"
+      },
+      "param": [
+        {
+          "key": "consentTypes",
+          "value": {
+            "type": 2,
+            "listItem": [
+              {
+                "type": 3,
+                "mapKey": [
+                  {
+                    "type": 1,
+                    "string": "consentType"
+                  },
+                  {
+                    "type": 1,
+                    "string": "read"
+                  },
+                  {
+                    "type": 1,
+                    "string": "write"
+                  }
+                ],
+                "mapValue": [
+                  {
+                    "type": 1,
+                    "string": "ad_storage"
+                  },
+                  {
+                    "type": 8,
+                    "boolean": true
+                  },
+                  {
+                    "type": 8,
+                    "boolean": false
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "clientAnnotations": {
+      "isEditedByUser": true
+    },
+    "isRequired": true
   }
 ]
 
@@ -185,6 +293,7 @@ scenarios:
       orderId: 'ORD-12345',
       orderCategory: 'sale',
       subId: '',
+      consentMode: 'off',
       debug: false
     };
 
@@ -203,6 +312,7 @@ scenarios:
       orderId: 'NL-99001',
       orderCategory: 'newsletter',
       subId: 'homepage-form',
+      consentMode: 'off',
       debug: true
     };
 
@@ -221,6 +331,7 @@ scenarios:
       orderId: 'ORD-FAIL',
       orderCategory: 'sale',
       subId: '',
+      consentMode: 'off',
       debug: false
     };
 
@@ -238,6 +349,7 @@ scenarios:
       programId: '5500',
       orderId: 'OB-2026-001',
       orderCategory: 'onboardingStart',
+      consentMode: 'off',
       debug: false
     };
 
@@ -247,6 +359,106 @@ scenarios:
 
     runCode(mockData);
 
+    assertApi('gtmOnSuccess').wasCalled();
+
+- name: "Consent - auto mode fires when ad_storage is already granted"
+  code: |-
+    var mockData = {
+      programId: '1428',
+      orderId: 'ORD-12345',
+      orderCategory: 'sale',
+      subId: '',
+      consentMode: 'auto',
+      debug: false
+    };
+
+    mock('isConsentGranted', function(type) {
+      return true;
+    });
+    mock('sendPixel', function(url, success, failure) {
+      success();
+    });
+
+    runCode(mockData);
+
+    assertApi('sendPixel').wasCalled();
+    assertApi('addConsentListener').wasNotCalled();
+    assertApi('gtmOnSuccess').wasCalled();
+
+- name: "Consent - auto mode waits when ad_storage is denied"
+  code: |-
+    var mockData = {
+      programId: '1428',
+      orderId: 'ORD-12345',
+      orderCategory: 'sale',
+      subId: '',
+      consentMode: 'auto',
+      debug: false
+    };
+
+    mock('isConsentGranted', function(type) {
+      return false;
+    });
+    mock('addConsentListener', function(type, callback) {});
+    mock('sendPixel', function(url, success, failure) {
+      success();
+    });
+
+    runCode(mockData);
+
+    assertApi('addConsentListener').wasCalled();
+    assertApi('sendPixel').wasNotCalled();
+
+- name: "Consent - fires once after ad_storage is granted via the listener"
+  code: |-
+    var mockData = {
+      programId: '1428',
+      orderId: 'ORD-12345',
+      orderCategory: 'sale',
+      subId: '',
+      consentMode: 'auto',
+      debug: false
+    };
+
+    mock('isConsentGranted', function(type) {
+      return false;
+    });
+    mock('addConsentListener', function(type, callback) {
+      callback(type, true);
+    });
+    var pixelCount = 0;
+    mock('sendPixel', function(url, success, failure) {
+      pixelCount++;
+      success();
+    });
+
+    runCode(mockData);
+
+    assertThat(pixelCount).isEqualTo(1);
+    assertApi('gtmOnSuccess').wasCalled();
+
+- name: "Consent - fire immediately skips the consent check"
+  code: |-
+    var mockData = {
+      programId: '1428',
+      orderId: 'ORD-12345',
+      orderCategory: 'sale',
+      subId: '',
+      consentMode: 'off',
+      debug: false
+    };
+
+    mock('isConsentGranted', function(type) {
+      return false;
+    });
+    mock('sendPixel', function(url, success, failure) {
+      success();
+    });
+
+    runCode(mockData);
+
+    assertApi('sendPixel').wasCalled();
+    assertApi('addConsentListener').wasNotCalled();
     assertApi('gtmOnSuccess').wasCalled();
 
 
