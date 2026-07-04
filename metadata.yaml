@@ -1,6 +1,8 @@
 homepage: "https://financeads.net"
 documentation: "https://github.com/newnorthdigital/financeads-web-tag/blob/main/README.md"
 versions:
+  - sha: 7e13ef0ff16e9d152ff29a64d18bc87a55bdb9ba
+    changeNotes: 'Add built-in GTM Consent Mode gate: fires only once consent is granted, with a Fire-immediately option.'
   - sha: 8d75338fbf8418cb0b14e3e34e5e7d766fe593cd
     changeNotes: 'NND-badge icon and shortened display name (by New North).'
   - sha: beca811bb3d094170c86ae8b63c494ec15b0c243
